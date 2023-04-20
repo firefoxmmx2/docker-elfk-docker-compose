@@ -1,0 +1,117 @@
+# a elk cluster test
+#
+# 创建一个elasticsearch集群，一个kibana 一个flebeat 一个logstash 
+version: '3'
+services:
+  es1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.7
+    container_name: es1
+    hostname: es1
+    environment:
+      - node.name=es1
+      - cluster.name=es-docker-cluster
+      # - discovery.seed_hosts=es2,es3
+      - cluster.initial_master_nodes=es1
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - ELASTIC_PASSWORD=aisino@2023
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata1:/usr/share/elasticsearch/data
+      - eslogs1:/usr/share/elasticsearch/logs
+    ports:
+      - 9201:9200
+    networks:
+      elastic:
+        ipv4_address: 172.19.0.2
+    extra_hosts:
+      - "es1:172.19.0.2"
+      - "es2:172.19.0.3"
+      - "es3:172.19.0.4"
+      - "kibana:172.19.0.5" # add kibana hosts
+      - "logstash:172.19.0.6" # add logstash hosts
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.7
+    container_name: kibana
+    hostname: kibana
+    environment:
+      ELASTICSEARCH_URL: http://es1:9200
+      ELASTICSEARCH_HOSTS: http://es1:9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: aisino@2023
+    ports:
+      - 5601:5601
+    depends_on:
+      - es1
+    networks:
+      elastic:
+        ipv4_address: 172.19.0.5
+    extra_hosts:
+      - "es1:172.19.0.2"
+      - "es2:172.19.0.3"
+      - "es3:172.19.0.4"
+      - "kibana:172.19.0.5" # add kibana hosts
+      - "logstash:172.19.0.6" # add logstash hosts
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.7
+    container_name: logstash
+    hostname: logstash
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      ELASTICSEARCH_HOST: "http://es1:9200"
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: aisino@2023
+    volumes:
+      - logstashconfig:/usr/share/logstash/config
+    ports:
+      - 5044:5044
+    networks:
+      elastic:
+        ipv4_address: 172.19.0.6
+    extra_hosts:
+      - "es1:172.19.0.2"
+      - "es2:172.19.0.3"
+      - "es3:172.19.0.4"
+      - "kibana:172.19.0.5" # add kibana hosts
+      - "logstash:172.19.0.6" # add logstash hosts
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.17.7
+    container_name: filebeat
+    hostname: filebeat
+    user: root
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      elastic:
+        ipv4_address: 172.19.0.7
+    extra_hosts:
+      - "es1:172.19.0.2"
+      - "es2:172.19.0.3"
+      - "es3:172.19.0.4"
+      - "kibana:172.19.0.5" # add kibana hosts
+      - "logstash:172.19.0.6" # add logstash hosts
+networks:
+  elastic:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.19.0.0/24
+# 创建es和logstash使用的卷
+volumes:
+  esdata1:
+  eslogs1:
+  esdata2:
+  eslogs2:
+  esdata3:
+  eslogs3:
+  kibana:
+  logstashconfig:

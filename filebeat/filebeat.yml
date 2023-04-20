@@ -1,0 +1,43 @@
+# 生成一个filebeat的配置文件
+# 1. 配置文件包含mysql慢日志，mysql慢查询日志路径/mysql/db1-slow.log
+# 2. 配置文件包含java spring boot的日志, 应用程序日志路径/app/socialcollect/logs/socialcollect.log
+# 3. 配置文件包含mysql的二进制日志文件，mysql二进制日志文件路径/mysql/binlog-*.log
+# 4. 输出发往es， es地址http://api1:9200
+# 5. 增加mysql模块和kafka模块
+
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: true
+  reload.period: 2s
+
+filebeat.modules:
+  - module: mysql
+    # Error logs
+    error:
+      enabled: true
+
+      # Set custom paths for the log files. If left empty,
+      # Filebeat will choose the paths depending on your OS.
+      #var.paths:
+      var.paths: ["/var/lib/mysql/*.err"]
+
+    # Slow logs
+    slowlog:
+      enabled: true
+
+      # Set custom paths for the log files. If left empty,
+      # Filebeat will choose the paths depending on your OS.
+      #var.paths:
+      var.paths: ["/var/lib/mysql/*-slow.log","/var/lib/mysql/*.slow"]
+
+setup.kibana:
+  host: "http://kibana:5601"
+setup.dashboards.enabled: true
+
+filebeat.inputs:
+output.elasticsearch:
+  hosts: ["http://es1:9200"]
+  username: "elastic"
+  password: "aisino@2023"
+
+
